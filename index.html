@@ -124,6 +124,32 @@
 
   @supports (padding-bottom:env(safe-area-inset-bottom)){.btn-section{padding-bottom:calc(14px + env(safe-area-inset-bottom));}}
 
+  /* ── DETAIL MODAL ── */
+  .detail-overlay{position:fixed;inset:0;z-index:800;background:rgba(26,18,8,0.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+  .detail-overlay.open{opacity:1;pointer-events:all;}
+  .detail-modal{width:100%;max-width:340px;background:var(--paper);border:3px solid var(--ink);border-radius:22px;box-shadow:6px 6px 0 var(--ink);overflow:hidden;transform:scale(0.85) translateY(20px);transition:transform 0.3s cubic-bezier(.34,1.36,.64,1);position:relative;}
+  .detail-overlay.open .detail-modal{transform:scale(1) translateY(0);}
+  .detail-modal-stripe{height:8px;background:var(--green-dark);}
+  .detail-modal-stripe.r5{background:linear-gradient(90deg,#c9902a,#f5c842,#c9902a);}
+  .detail-modal-stripe.r4{background:linear-gradient(90deg,#8b5cf6,#a78bfa,#8b5cf6);}
+  .detail-modal-stripe.r3{background:linear-gradient(90deg,#e67e22,#f39c12,#e67e22);}
+  .detail-modal-stripe.r2{background:linear-gradient(90deg,#4a7c2f,#7ec850,#4a7c2f);}
+  .detail-modal-stripe.r1{background:linear-gradient(90deg,#6b7280,#9ca3af,#6b7280);}
+  .detail-modal-body{display:flex;flex-direction:column;align-items:center;padding:20px 20px 24px;gap:0;}
+  .detail-modal-emoji{font-size:64px;width:110px;height:110px;border-radius:50%;background:var(--bg);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+  .detail-modal-name{font-family:'Kaisei Decol',serif;font-size:22px;font-weight:700;color:var(--ink);letter-spacing:1px;text-align:center;margin-bottom:5px;}
+  .detail-modal-rarity{font-size:20px;margin-bottom:10px;letter-spacing:2px;}
+  .detail-modal-divider{width:80%;height:2px;background:repeating-linear-gradient(90deg,var(--ink) 0,var(--ink) 4px,transparent 4px,transparent 8px);margin-bottom:10px;opacity:0.2;}
+  .detail-modal-flabel{font-size:9px;color:var(--green-mid);letter-spacing:2px;font-weight:700;margin-bottom:5px;}
+  .detail-modal-feature{font-size:12px;color:rgba(26,18,8,0.7);text-align:center;line-height:1.7;padding:0 8px;white-space:pre-line;margin-bottom:16px;}
+  .detail-modal-footer{display:flex;gap:8px;width:100%;}
+  .detail-close-btn{flex:1;background:var(--ink);color:var(--cream);border:none;border-radius:10px;padding:10px;font-family:'Kaisei Decol',serif;font-size:14px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .detail-share-btn{flex:1;background:#000;color:#fff;border:none;border-radius:10px;padding:10px;font-family:'M PLUS Rounded 1c',sans-serif;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;}
+
+  /* collection item cursor */
+  .collection-item.found{cursor:pointer;}
+  .collection-item.found:active{transform:scale(0.92);}
+
   /* ── SSR OVERLAY ── */
   .ssr-overlay{position:fixed;inset:0;z-index:1000;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
   .ssr-flash{position:absolute;inset:0;background:radial-gradient(ellipse at center,#fffbe0 0%,#ffd700 40%,#c9902a 100%);opacity:0;animation:ssrFlash 1.2s ease forwards;}
@@ -168,6 +194,25 @@
   <div class="ssr-subtext">✦ 伝説の妖怪が現れた！ ✦</div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- DETAIL MODAL -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-modal" id="detailModal">
+    <div class="detail-modal-stripe" id="detailStripe"></div>
+    <div class="detail-modal-body">
+      <div class="detail-modal-emoji" id="detailEmoji"></div>
+      <div class="detail-modal-name" id="detailName"></div>
+      <div class="detail-modal-rarity" id="detailRarity"></div>
+      <div class="detail-modal-divider"></div>
+      <div class="detail-modal-flabel">✦ とくちょう ✦</div>
+      <div class="detail-modal-feature" id="detailFeature"></div>
+      <div class="detail-modal-footer">
+        <button class="detail-close-btn" onclick="closeDetail()">閉じる</button>
+        <button class="detail-share-btn" onclick="shareFromModal()"><span>𝕏</span>シェア</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="wrapper">
 
   <header class="header">
@@ -707,6 +752,42 @@ function showTab(tab) {
   });
 }
 
+// ── 図鑑詳細モーダル ──
+function openDetail(yokaiId) {
+  const y = YOKAI.find(y => y.id === yokaiId);
+  if (!y || !found.has(y.id)) return;
+  const rarityColor = {5:'#c9902a',4:'#8b5cf6',3:'#e67e22',2:'#4a7c2f',1:'#6b7280'};
+  document.getElementById('detailEmoji').textContent   = y.emoji;
+  document.getElementById('detailName').textContent    = y.name;
+  document.getElementById('detailFeature').textContent = y.feature;
+  const rEl = document.getElementById('detailRarity');
+  rEl.textContent  = y.stars;
+  rEl.style.color  = rarityColor[y.rarity] || '#6b7280';
+  const stripe = document.getElementById('detailStripe');
+  stripe.className = 'detail-modal-stripe r' + y.rarity;
+  const emojiEl = document.getElementById('detailEmoji');
+  const glows = {5:'0 0 22px rgba(201,144,42,0.7)',4:'0 0 18px rgba(139,92,246,0.6)',3:'0 0 14px rgba(230,126,34,0.55)'};
+  emojiEl.style.boxShadow = glows[y.rarity] ? '3px 3px 0 var(--ink),' + glows[y.rarity] : '3px 3px 0 var(--ink)';
+  // シェア用に一時保存
+  window._detailYokai = y;
+  document.getElementById('detailOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail(e) {
+  if (e && e.target !== document.getElementById('detailOverlay')) return;
+  document.getElementById('detailOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function shareFromModal() {
+  const y = window._detailYokai;
+  if (!y) return;
+  const rarityLabel = y.rarity===5?'【伝説】':y.rarity===4?'【激レア】':y.rarity===3?'【レア】':'';
+  const text = `🎋宮城妖怪図鑑🎋\n「${y.name}」を発見！\n${y.stars} ${rarityLabel}\n\n発見数：${found.size} / ${TOTAL} 体\n\n#宮城妖怪図鑑 #宮城`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`, '_blank');
+}
+
 // ── Init grid ──
 function initGrid() {
   const grid = document.getElementById('collectionGrid');
@@ -715,7 +796,9 @@ function initGrid() {
     item.className = 'collection-item' + (found.has(y.id) ? ' found r'+y.rarity : '');
     item.id = 'col-' + y.id;
     item.dataset.rarity = y.rarity;
+    item.dataset.yokaiId = y.id;
     item.innerHTML = `<span class="col-emoji">${y.emoji}</span><span class="col-name">${y.name}</span><span class="col-stars">${y.stars}</span>`;
+    if (found.has(y.id)) item.addEventListener('click', () => openDetail(y.id));
     grid.appendChild(item);
   });
 }
@@ -826,7 +909,11 @@ async function doGacha() {
     if(isNew){
       found.add(yokai.id); updateProgress(); saveFound();
       const col = document.getElementById('col-'+yokai.id);
-      if(col){ col.classList.add('found','r'+yokai.rarity); col.style.animation='collectionPop 0.5s 0.3s cubic-bezier(.34,1.56,.64,1) both'; }
+      if(col){
+        col.classList.add('found','r'+yokai.rarity);
+        col.style.animation='collectionPop 0.5s 0.3s cubic-bezier(.34,1.56,.64,1) both';
+        col.addEventListener('click', () => openDetail(yokai.id));
+      }
     }
 
     if(found.size===TOTAL){
